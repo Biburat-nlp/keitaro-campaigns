@@ -1,7 +1,7 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import drafts, services
@@ -17,6 +17,7 @@ from app.schemas import (
     CountriesAdd,
     OfferAdd,
     OperationOut,
+    OperationsPage,
     PinSet,
     ShareSet,
 )
@@ -122,11 +123,21 @@ def delete_campaign(campaign_id: int, client: Keitaro, db: Db) -> None:
 
 
 @router.get("/campaigns/{campaign_id}/operations")
-def operations(campaign_id: int, db: Db) -> list[OperationOut]:
-    rows = db.scalars(
-        select(Operation).where(Operation.campaign_id == campaign_id).order_by(Operation.id.desc()).limit(100)
+def operations(
+    campaign_id: int,
+    db: Db,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+) -> OperationsPage:
+    condition = Operation.campaign_id == campaign_id
+    total = db.scalar(select(func.count()).select_from(Operation).where(condition)) or 0
+    rows = db.scalars(select(Operation).where(condition).order_by(Operation.id.desc()).offset(offset).limit(limit))
+    return OperationsPage(
+        items=[OperationOut.model_validate(row) for row in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
     )
-    return [OperationOut.model_validate(row) for row in rows]
 
 
 @router.post("/streams/{stream_id}/offers")

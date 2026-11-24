@@ -89,6 +89,10 @@ const ru = {
   'editor.rotationPosition': 'По позиции',
   'editor.history': 'История изменений',
   'editor.noHistory': 'Изменений через этот инструмент ещё не было.',
+  'history.pager': 'Страницы истории',
+  'history.newer': '← Новее',
+  'history.older': 'Старее →',
+  'history.range': '{from}–{to} из {total}',
 
   'streamType.forced': 'Перехватывающий',
   'streamType.regular': 'Обычный',
@@ -240,6 +244,10 @@ const en: Record<MessageKey, string> = {
   'editor.rotationPosition': 'By position',
   'editor.history': 'Change history',
   'editor.noHistory': 'No changes have been made through this tool yet.',
+  'history.pager': 'History pages',
+  'history.newer': '← Newer',
+  'history.older': 'Older →',
+  'history.range': '{from}–{to} of {total}',
 
   'streamType.forced': 'Forced',
   'streamType.regular': 'Regular',

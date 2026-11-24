@@ -131,7 +131,7 @@ frontend/src/
 | POST | `/api/campaigns/{id}/sync` | «Загрузить из Keitaro»: перечитать потоки и офферы, черновики сохраняются |
 | PATCH | `/api/campaigns/{id}` | переименовать кампанию `{name}` |
 | DELETE | `/api/campaigns/{id}` | удалить кампанию |
-| GET | `/api/campaigns/{id}/operations` | история изменений, сделанных через инструмент |
+| GET | `/api/campaigns/{id}/operations?offset=0&limit=10` | история изменений, сделанных через инструмент, постранично: `{items, total, offset, limit}`, новые сверху |
 | POST | `/api/streams/{id}/countries` | добавить страны в фильтр `{countries: ["NZ", "GB"]}` |
 | DELETE | `/api/streams/{id}/countries/{code}` | удалить страну из фильтра |
 | POST | `/api/streams/{id}/offers` | черновик: добавить оффер `{offer_id}` |

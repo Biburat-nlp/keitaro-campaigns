@@ -82,6 +82,13 @@ export type Operation = {
   created_at: string
 }
 
+export type OperationsPage = {
+  items: Operation[]
+  total: number
+  offset: number
+  limit: number
+}
+
 export type CampaignCreate = {
   name: string
   countries: string[]
@@ -129,7 +136,8 @@ export const api = {
   offers: () => request<Offer[]>('/offers'),
   campaigns: () => request<Campaign[]>('/campaigns?limit=200'),
   campaign: (id: number) => request<CampaignDetails>(`/campaigns/${id}`),
-  operations: (id: number) => request<Operation[]>(`/campaigns/${id}/operations`),
+  operations: (id: number, offset: number, limit: number) =>
+    request<OperationsPage>(`/campaigns/${id}/operations?offset=${offset}&limit=${limit}`),
   createCampaign: (data: CampaignCreate) =>
     request<CampaignDetails>('/campaigns', { method: 'POST', body: JSON.stringify(data) }),
   renameCampaign: (id: number, name: string) =>

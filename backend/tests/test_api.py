@@ -40,7 +40,7 @@ def test_create_campaign_builds_two_streams(client, fake):
     assert offers_of(offers) == {18001: 100}
     assert data["created_here"] is True
 
-    history = client.get(f"/api/campaigns/{campaign['id']}/operations").json()
+    history = client.get(f"/api/campaigns/{campaign['id']}/operations").json()["items"]
     assert [item["action"] for item in history] == ["create_campaign"]
 
 
@@ -87,7 +87,7 @@ def test_rename_campaign(client, fake):
     assert client.patch(url, json={"name": "   "}).status_code == 422
     assert client.patch("/api/campaigns/99999", json={"name": "x"}).status_code == 404
 
-    history = client.get(f"{url}/operations").json()
+    history = client.get(f"{url}/operations").json()["items"]
     assert history[0]["action"] == "rename_campaign"
     assert history[0]["details"] == {"old_name": "Test campaign", "name": "New name"}
 
@@ -121,7 +121,7 @@ def test_add_and_remove_countries(client, fake):
     assert geo_codes(stream) == ["NZ", "GB"]
     assert stream["name"] == "Geo NZ, GB"
 
-    history = client.get(f"/api/campaigns/{campaign_id}/operations").json()
+    history = client.get(f"/api/campaigns/{campaign_id}/operations").json()["items"]
     assert [item["action"] for item in history[:2]] == ["remove_country", "add_countries"]
     assert history[0]["details"] == {"countries": ["AU"], "result": ["NZ", "GB"]}
     assert history[1]["details"] == {"countries": ["NZ", "GB"], "result": ["AU", "NZ", "GB"]}
@@ -179,7 +179,7 @@ def test_migration_moves_single_country_to_list(tmp_path):
 
 def test_operations_are_returned_in_utc(client, fake):
     campaign_id = create(client).json()["campaign"]["id"]
-    created_at = client.get(f"/api/campaigns/{campaign_id}/operations").json()[0]["created_at"]
+    created_at = client.get(f"/api/campaigns/{campaign_id}/operations").json()["items"][0]["created_at"]
     assert created_at.endswith(("Z", "+00:00"))
 
 
@@ -193,3 +193,20 @@ def test_create_rolls_back_when_db_write_fails(client, fake, monkeypatch):
     with pytest.raises(RuntimeError):
         create(client)
     assert fake.campaigns == {}
+
+
+def test_operations_are_paginated(client, fake):
+    campaign_id = create(client).json()["campaign"]["id"]
+    for index in range(12):
+        client.patch(f"/api/campaigns/{campaign_id}", json={"name": f"Name {index}"})
+    url = f"/api/campaigns/{campaign_id}/operations"
+
+    first = client.get(url).json()
+    assert (first["total"], first["offset"], first["limit"], len(first["items"])) == (13, 0, 10, 10)
+    assert first["items"][0]["details"]["name"] == "Name 11"
+
+    last = client.get(url, params={"offset": 10, "limit": 10}).json()
+    assert [item["action"] for item in last["items"]] == ["rename_campaign", "rename_campaign", "create_campaign"]
+
+    assert client.get(url, params={"limit": 0}).status_code == 422
+    assert client.get(url, params={"offset": -1}).status_code == 422

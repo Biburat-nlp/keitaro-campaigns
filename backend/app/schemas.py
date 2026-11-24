@@ -92,6 +92,13 @@ class OperationOut(BaseModel):
         return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
 
+class OperationsPage(BaseModel):
+    items: list[OperationOut]
+    total: int
+    offset: int
+    limit: int
+
+
 class CampaignDetails(BaseModel):
     campaign: dict[str, Any]
     streams: list[dict[str, Any]]

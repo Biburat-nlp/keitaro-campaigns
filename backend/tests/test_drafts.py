@@ -162,7 +162,7 @@ def test_sync_marks_offers_deleted_in_keitaro_as_removed(client, fake, setup):
     assert sorted(removed(stream)) == [18002, 18003]
     assert stream["dirty"] is False
 
-    history = client.get(f"/api/campaigns/{campaign_id}/operations").json()
+    history = client.get(f"/api/campaigns/{campaign_id}/operations").json()["items"]
     assert history[0]["action"] == "sync"
     assert sorted(history[0]["details"]["vanished"][str(stream_id)]) == [18002, 18003]
 

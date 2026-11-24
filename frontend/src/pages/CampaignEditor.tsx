@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api, type Campaign, type CampaignDetails, type Catalog, type Offer, type Operation, type Stream, type StreamFilter } from '../api'
+import { api, type Campaign, type CampaignDetails, type Catalog, type Offer, type Operation, type OperationsPage, type Stream, type StreamFilter } from '../api'
 import CampaignTitle from '../components/CampaignTitle'
 import GeoFilterEditor from '../components/GeoFilterEditor'
 import OffersEditor from '../components/OffersEditor'
@@ -8,6 +8,10 @@ import { useI18n, type I18n, type MessageKey } from '../i18n'
 import { campaignUrl, countryName, formatDate, navigate, safeHref } from '../utils'
 
 type Props = { campaignId: number; catalog: Catalog; offers: Offer[] }
+
+const HISTORY_PAGE_SIZE = 10
+
+const EMPTY_HISTORY: OperationsPage = { items: [], total: 0, offset: 0, limit: HISTORY_PAGE_SIZE }
 
 function label(i18n: I18n, prefix: string, value: string): string {
   const key = `${prefix}.${value}` as MessageKey
@@ -94,7 +98,8 @@ export default function CampaignEditor({ campaignId, catalog, offers }: Props) {
   const i18n = useI18n()
   const { t, locale } = i18n
   const [details, setDetails] = useState<CampaignDetails | null>(null)
-  const [history, setHistory] = useState<Operation[]>([])
+  const [history, setHistory] = useState<OperationsPage>(EMPTY_HISTORY)
+  const [historyBusy, setHistoryBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -102,12 +107,16 @@ export default function CampaignEditor({ campaignId, catalog, offers }: Props) {
 
   const offersById = useMemo(() => new Map(offers.map((offer) => [offer.id, offer])), [offers])
 
-  const loadHistory = useCallback(() => {
-    api
-      .operations(campaignId)
-      .then(setHistory)
-      .catch(() => setHistory([]))
-  }, [campaignId])
+  const loadHistory = useCallback(
+    (offset = 0) => {
+      api
+        .operations(campaignId, offset, HISTORY_PAGE_SIZE)
+        .then(setHistory)
+        .catch(() => setHistory(EMPTY_HISTORY))
+        .finally(() => setHistoryBusy(false))
+    },
+    [campaignId],
+  )
 
   const load = useCallback(() => {
     api
@@ -118,6 +127,11 @@ export default function CampaignEditor({ campaignId, catalog, offers }: Props) {
   }, [campaignId, loadHistory])
 
   useEffect(load, [load])
+
+  function showHistory(offset: number) {
+    setHistoryBusy(true)
+    loadHistory(offset)
+  }
 
   function onStreamChanged(stream: Stream) {
     setDetails(
@@ -274,17 +288,42 @@ export default function CampaignEditor({ campaignId, catalog, offers }: Props) {
           </div>
           <div className="card">
             <h3>{t('editor.history')}</h3>
-            {history.length === 0 ? (
+            {history.total === 0 ? (
               <p className="small muted">{t('editor.noHistory')}</p>
             ) : (
-              <ul className="history">
-                {history.map((operation) => (
-                  <li key={operation.id}>
-                    <span className="small muted">{formatDate(operation.created_at, locale)}</span>
-                    <span className="small">{describeOperation(operation, offersById, i18n)}</span>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul className="history">
+                  {history.items.map((operation) => (
+                    <li key={operation.id}>
+                      <span className="small muted">{formatDate(operation.created_at, locale)}</span>
+                      <span className="small">{describeOperation(operation, offersById, i18n)}</span>
+                    </li>
+                  ))}
+                </ul>
+                {history.total > history.limit && (
+                  <nav className="pager" aria-label={t('history.pager')}>
+                    <button
+                      disabled={historyBusy || history.offset === 0}
+                      onClick={() => showHistory(Math.max(0, history.offset - history.limit))}
+                    >
+                      {t('history.newer')}
+                    </button>
+                    <span className="small muted">
+                      {t('history.range', {
+                        from: history.offset + 1,
+                        to: Math.min(history.offset + history.items.length, history.total),
+                        total: history.total,
+                      })}
+                    </span>
+                    <button
+                      disabled={historyBusy || history.offset + history.limit >= history.total}
+                      onClick={() => showHistory(history.offset + history.limit)}
+                    >
+                      {t('history.older')}
+                    </button>
+                  </nav>
+                )}
+              </>
             )}
           </div>
         </aside>
